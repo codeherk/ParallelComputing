@@ -22,6 +22,9 @@ int main(int argc, char* argv[])
   double *bb;	/* the B matrix */
   double *cc1;	/* A x B computed using the omp-mpi code you write */
   double *cc2;	/* A x B computed using the conventional algorithm */
+  //Var to use for matrix
+  int i, j, iter, n;
+	
   int myid, numprocs;
   double starttime, endtime;
   MPI_Status status;
@@ -62,8 +65,7 @@ int main(int argc, char* argv[])
 		token = strtok(NULL, "rows()cols ");
 		col1 =atoi(token);
 	}
-	printf("\nRow: %d by Column %d\n", row1,col1);
-	fclose(file1);
+	printf("\nRow1: %d by Column1 %d\n", row1,col1);
 
 	//Read the file 2 and get row and col of second matrix 
 	if(fgets(line, sizeof line, file2)){
@@ -75,8 +77,43 @@ int main(int argc, char* argv[])
                 col2 =atoi(token);
         }
         printf("\nRow2 : %d by Column2 %d\n", row2,col2);
-	fclose(file2);
+	
+	
+	//Get matrix A
+	aa=(double*)malloc(sizeof(double) * row1 * col1);
+        for(i=0;i<row1;i++)
+        	for(j=0;j<col1;j++)
+        		n= fscanf(file1,"%lf",&aa[i*col1+j]);
+	//Get matrix B
+	bb=(double*)malloc(sizeof(double) * row2 * col2);
+		for(i=0;i<row2;i++)
+			for(j=0;j<col2;j++)
+		      		n= fscanf(file2,"%lf",&bb[i*col2+j]);
 
+
+    	/*Here is the test to print out 2 matrix*/
+    	printf("Here is the test\n");
+   	printf("print A\n");
+	for(i=0;i<row1;i++)
+        {
+         for(j=0;j<col1;j++)
+                {
+                printf("%lf   ",aa[i*col1+j]);
+                }
+                printf("\n");
+        }
+    printf("print B\n");
+
+        for(i=0;i<row2;i++)
+        {
+         for(j=0;j<col2;j++)
+                {
+                printf("%lf   ",bb[i*col2+j]);
+                }
+                printf("\n");
+        }
+	    
+	    
       //aa = gen_matrix(nrows, ncols);
       //bb = gen_matrix(ncols, nrows);
      // printf("%f",*aa);
