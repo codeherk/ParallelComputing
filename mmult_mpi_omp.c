@@ -1,17 +1,18 @@
+#include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <sys/time.h>
 #include <errno.h>
 #include <math.h>
 #include <string.h>
-#include "mpi.h"
-#include <time.h>
 #define min(x, y) ((x)<(y)?(x):(y))
 
-/*
-I basically reuse the mpi and omp matrix times vector code by sending each column of
-the second matrix as the column "b" and repeat process for number of columns of matrix 2. 
-*/
+/**
+  Program to multiply a matrix times a matrix using both
+    mpi to distribute the computation among nodes and omp
+    to distribute the computation among threads.
+**/
 
 int main(int argc, char* argv[])
 {
@@ -38,7 +39,7 @@ if(argc>2)
 {
  //Master will parse throught texts files and dynmatically create arrays.
    if(myid==0)
-{
+	{
         FILE * file1; //File Pointer for text 1
         FILE * file2; //File Pointer for text 2
         int row1,col1,row2,col2;
@@ -47,7 +48,8 @@ if(argc>2)
         file1=fopen(argv[1],"r");
         if( file1 == NULL)
         {
-        printf("\nError Opening File of File does not exist\n");
+        printf("\nError opening file, file does not exist\n");
+
 //Sends a message to slaves to terminate 
 for(i=0;i<numprocs-1;i++){
           MPI_Send(MPI_BOTTOM, 0, MPI_INT, i+1, 0, MPI_COMM_WORLD);
@@ -91,13 +93,15 @@ for(i=0;i<numprocs-1;i++){
         file2=fopen(argv[2],"r");
         if( file2 == NULL)
         {
-                printf("\nError Opening File or File does not exist\n");
-               //Sends slave message to exit 
+                printf("\nError opening file, file does not exist\n");
+       
+       //Sends slave message to exit 
 for(i=0;i<numprocs-1;i++){
           MPI_Send(MPI_BOTTOM, 0, MPI_INT, i+1, 0, MPI_COMM_WORLD);
           }
  exit(0);
-        }
+       }
+
         //Gets row and col values for second file
         if(fgets(line,sizeof line, file2)!=NULL)
         {
@@ -114,7 +118,7 @@ for(i=0;i<numprocs-1;i++){
          value= strndup(ret+5,index-5);
          col2=atoi(value);
         }
-        //printf("%d rows,%d column\n",row2,col2);
+
         
         //Allocate Memory & Populate Matrix 2
          matrix2=(double*)malloc(sizeof(double) * row2 * col2);
@@ -151,19 +155,21 @@ for(i=0;i<numprocs-1;i++){
         else
                 multipliable=0;
 
-        //ACTUALYY MULTIPY and start distributing rows and columns
+        //Check to see if you can multiply the matrices
         if(multipliable==1)
         {
-        //printf("\nWe can multiply the matrices");
+        
         ncols=col1;
         nrows=row1;
         dimen[0]=nrows;
         dimen[1]=ncols;
         dimen[2]=col2;
+
         //Sends each slave the neccesary info like row and colmns
         for(i=0;i<numprocs-1;i++){
         MPI_Send(dimen, 3, MPI_INT, i+1, i+1, MPI_COMM_WORLD);
-        //printf("\nSENDING NOTFICATION CAN MULTIPY TO SLAVE");
+       
+
         }
         b = (double*)malloc(sizeof(double) * ncols);
         c = (double **)malloc(row1 * sizeof(double *));
@@ -171,7 +177,7 @@ for(i=0;i<numprocs-1;i++){
         c[i] = (double *)malloc(col2 * sizeof(double));
         buffer = (double*)malloc(sizeof(double) * ncols);
 
-/*
+		/*
         We will use the matrix times vector as a guideline as we will 
         take each column of second matrix to be our vector and keep sending a new column
         */
@@ -201,7 +207,8 @@ for(i=0;i<numprocs-1;i++){
                         sender = status.MPI_SOURCE;
                         anstype = status.MPI_TAG;
                         c[anstype-1][iter] = ans;
-                        //printf("\nRECIEVED ANS %f",ans);
+                      
+
                         if (numsent < nrows) {
                           for (j = 0; j < ncols; j++) {
                             buffer[j] = matrix1[numsent*ncols + j];
@@ -215,7 +222,6 @@ for(i=0;i<numprocs-1;i++){
                         }
         }
         endtime= MPI_Wtime();
-      //printf("\nReached end with time %f",(endtime - starttime));
 
         //print the product matrix
         printf("Result matrix is stored in result.txt\n");
@@ -225,50 +231,53 @@ for(i=0;i<numprocs-1;i++){
         }
         printf("\n");
         }
+
         //store the product result in text file
-        FILE * fp3; // File pointer to produce result text file 
-        fp3=fopen("result.txt","w");
-        fprintf(fp3,"rows(%d) cols(%d)\n",row1,col2);
+        FILE * file3; // File pointer to produce result text file 
+        file3=fopen("result.txt","w");
+        fprintf(file3,"rows(%d) cols(%d)\n",row1,col2);
 
         //printf("\n\nProduct of two matrices in result.txt\n");
         for(i=0;i<row1;i++)
         {
         for(j=0;j<col2;j++)
-        { fprintf(fp3,"%f ",c[i][j]);
+        { fprintf(file3,"%f ",c[i][j]);
         }
-        fprintf(fp3,"\n");
+        fprintf(file3,"\n");
         }
-        fclose(fp3);
+        fclose(file3);
      }
-    //If dimensions not right print out cant multiply and notify all slaves to end 
+    //If dimensions are not correct, you can't multiply the matrices. Notified all slaves to end 
        else{
-        printf("\nDimensions do no allow multiplication\n");
+        printf("\nDimensions do not allow multiplication\n");
         for(i=0;i<numprocs-1;i++){
           MPI_Send(MPI_BOTTOM, 0, MPI_INT, i+1, 0, MPI_COMM_WORLD);
           }
         }
 
 } else {
+
  /* SLAVE CODE
- Will recieve certain info on dimenionsion of matrixs and will learn 
- if can actually multiply or just stop slaves
+ Will receive certain info on dimensions of matrices and will determine whether they can be calculated or not
  */
  MPI_Recv(dimen, 3, MPI_INT, 0, MPI_ANY_TAG,
                    MPI_COMM_WORLD, &status);
       if(status.MPI_TAG==0){
         multipliable==0;
         }
-    //If can multiply allocate memory in slave
+    // Allocate memory
       else{
         multipliable=1;
         nrows=dimen[0];
         ncols=dimen[1];
         iter=dimen[2];
-        //printf("\\nRECIEDCE DIMEN %d %d %d",nrows,ncols,iter);
+        
+
         b = (double*)malloc(sizeof(double) * ncols);
         buffer = (double*)malloc(sizeof(double) * ncols);
         }
-    //If can multiply actually multiply by getting a new column each iteration
+
+    // Getting a new column each iteration
      if(multipliable==1){
            for(i=0;i<iter;i++){
              MPI_Bcast(b, ncols, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -294,9 +303,10 @@ for(i=0;i<numprocs-1;i++){
 
 //If not enought arguments print out correct formating
 else{
-if(myid==0){
-fprintf(stderr, "Usage mpiexec -f ~/hosts -n 2 ./mmult_mpi_omp <name1.txt> <name2.txt>\n");
-}}
+	if(myid==0){
+	fprintf(stderr, "Usage mpiexec -f ~/hosts -n 2 ./mmult_mpi_omp <name1.txt> <name2.txt>\n");
+	}
+}
 MPI_Finalize();
 return 0;
 
