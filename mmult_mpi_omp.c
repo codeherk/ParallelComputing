@@ -7,7 +7,8 @@
 #include <math.h>
 #include <string.h>
 #define min(x, y) ((x)<(y)?(x):(y))
-
+#define KCYN  "\x1B[36m" //CYAN color
+#define RESET "\x1B[0m"
 /**
   Program to multiply a matrix times a matrix using both
     mpi to distribute the computation among nodes and omp
@@ -140,17 +141,17 @@ int main(int argc, char* argv[]){
         printf("%d rows,%d columns\n",row1,col1);
         for(i=0;i<row1;i++){
           for(j=0;j<col1;j++){ 
-            printf("%f ",matrix1[i*col1+j]);
+            printf(KCYN "%f " RESET,matrix1[i*col1+j]);
+	  }
+	  printf("\n");
         }
-        printf("\n");
-        }
-        printf("Matrix from %s\n", argv[2]);
+        printf("\nMatrix from %s\n", argv[2]);
         printf("%d rows,%d columns\n",row2,col2);
         for(i=0;i<row2;i++){
           for(j=0;j<col2;j++){ 
-            printf("%f ",matrix2[i*col2+j]);
-       	 }
-        printf("\n");
+            printf(KCYN "%f " RESET,matrix2[i*col2+j]);
+       	  }
+	  printf("\n");
         }
 
         if(col1 == row2)
@@ -224,10 +225,10 @@ int main(int argc, char* argv[]){
           endtime= MPI_Wtime();
 
           //print the product matrix
-          printf("Result matrix is stored in result.txt\n");
+          printf("\nResult matrix is stored in result.txt\n");
           for(i=0;i<row1;i++){
             for(j=0;j<col2;j++){ 
-              printf("%f ",c[i][j]);
+              printf(KCYN"%f " RESET,c[i][j]);
             }
             printf("\n");
           }
