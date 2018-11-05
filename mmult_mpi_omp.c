@@ -17,7 +17,7 @@
 int main(int argc, char* argv[])
 {
   int i,j,iter;
-  int multipliable; //boolean to see if can matrix multipy
+  int canMultiply;
   int nrows, ncols,*dimen;
   dimen=(int*)malloc(sizeof(int) * 3);
   double  *b, **c;
@@ -40,8 +40,8 @@ if(argc>2)
  //Master will parse throught texts files and dynmatically create arrays.
    if(myid==0)
 	{
-        FILE * file1; //File Pointer for text 1
-        FILE * file2; //File Pointer for text 2
+        FILE * file1; 
+        FILE * file2;
         int row1,col1,row2,col2;
         double *matrix1,*matrix2;
 
@@ -56,7 +56,9 @@ for(i=0;i<numprocs-1;i++){
           }
         exit(0);
         }
+
         char line[128];
+
         //Gets row and col values for first file
         if(fgets(line,sizeof line, file1)!=NULL)
         {
@@ -69,6 +71,7 @@ for(i=0;i<numprocs-1;i++){
          index= (int)(value-ret);
          value=strndup(ret+5,index-5);
          row1=atoi(value);
+
         //Gets column value  
          ret=strstr(ret,"cols(");
          value=strchr(ret,')');
@@ -76,7 +79,7 @@ for(i=0;i<numprocs-1;i++){
          value= strndup(ret+5,index-5);
          col1=atoi(value);
         }
-       // printf("%d rows,%d column\n",row1,col1);
+
 
  //Allocate Memory & Populate Matrix 1
          matrix1=(double*)malloc(sizeof(double) * row1 * col1);
@@ -96,13 +99,13 @@ for(i=0;i<numprocs-1;i++){
                 printf("\nError opening file, file does not exist\n");
        
        //Sends slave message to exit 
-for(i=0;i<numprocs-1;i++){
+	for(i=0;i<numprocs-1;i++){
           MPI_Send(MPI_BOTTOM, 0, MPI_INT, i+1, 0, MPI_COMM_WORLD);
           }
- exit(0);
+			 exit(0);
        }
 
-        //Gets row and col values for second file
+        //Gets row and column values for second file
         if(fgets(line,sizeof line, file2)!=NULL)
         {
         //Gets first line and parses to get row value
@@ -111,6 +114,7 @@ for(i=0;i<numprocs-1;i++){
          int index = (int)(value-ret);
          value=strndup(ret+5,index-5);
          row2=atoi(value);
+
         //Gets column value  
          ret=strstr(ret,"cols(");
          value=strchr(ret,')');
@@ -122,17 +126,16 @@ for(i=0;i<numprocs-1;i++){
         
         //Allocate Memory & Populate Matrix 2
          matrix2=(double*)malloc(sizeof(double) * row2 * col2);
-        for(i=0;i<row2;i++)
-        {
-         for(j=0;j<col2;j++)
-                {
+        for(i=0;i<row2;i++) {
+         	for(j=0;j<col2;j++){
                 int hold=fscanf(file2,"%lf",&matrix2[i*col2+j]);
                 }
         }
+
         fclose(file2);
 
 
-        //Print 2 matrixs
+        //Print the 2 matrices
         printf("Matrix 1\n");
         printf("%d rows,%d columns\n",row1,col1);
         for(i=0;i<row1;i++){
@@ -146,17 +149,17 @@ for(i=0;i<numprocs-1;i++){
         for(i=0;i<row2;i++){
           for(j=0;j<col2;j++){ 
             printf("%f ",matrix2[i*col2+j]);
-        }
+       	 }
         printf("\n");
         }
 
         if(col1==row2)
-                multipliable=1;
+                canMultiply=1;
         else
-                multipliable=0;
+                canMultiply=0;
 
         //Check to see if you can multiply the matrices
-        if(multipliable==1)
+        if(canMultiply==1)
         {
         
         ncols=col1;
@@ -181,9 +184,10 @@ for(i=0;i<numprocs-1;i++){
         We will use the matrix times vector as a guideline as we will 
         take each column of second matrix to be our vector and keep sending a new column
         */
+
         starttime= MPI_Wtime();
-        for(iter=0;iter<col2;iter++)
-         {
+        for(iter=0;iter<col2;iter++) {
+
                 /*
                 Take each column of second matrix to be b vector and rest is just 
                 matrix times vector code
@@ -232,21 +236,23 @@ for(i=0;i<numprocs-1;i++){
         printf("\n");
         }
 
-        //store the product result in text file
-        FILE * file3; // File pointer to produce result text file 
+        //store the result in another text file
+        FILE * file3; 
         file3=fopen("result.txt","w");
         fprintf(file3,"rows(%d) cols(%d)\n",row1,col2);
 
-        //printf("\n\nProduct of two matrices in result.txt\n");
-        for(i=0;i<row1;i++)
-        {
-        for(j=0;j<col2;j++)
-        { fprintf(file3,"%f ",c[i][j]);
-        }
+
+        for(i=0;i<row1;i++) {
+       	 	for(j=0;j<col2;j++){ 
+       	 		fprintf(file3,"%f ",c[i][j]);
+        	}
+
         fprintf(file3,"\n");
-        }
+        	}
+
         fclose(file3);
      }
+
     //If dimensions are not correct, you can't multiply the matrices. Notified all slaves to end 
        else{
         printf("\nDimensions do not allow multiplication\n");
@@ -263,11 +269,12 @@ for(i=0;i<numprocs-1;i++){
  MPI_Recv(dimen, 3, MPI_INT, 0, MPI_ANY_TAG,
                    MPI_COMM_WORLD, &status);
       if(status.MPI_TAG==0){
-        multipliable==0;
+        canMultiply==0;
         }
-    // Allocate memory
+
+    // Allocate memory based on dimensions
       else{
-        multipliable=1;
+        canMultiply=1;
         nrows=dimen[0];
         ncols=dimen[1];
         iter=dimen[2];
@@ -278,7 +285,7 @@ for(i=0;i<numprocs-1;i++){
         }
 
     // Getting a new column each iteration
-     if(multipliable==1){
+     if(canMultiply==1){
            for(i=0;i<iter;i++){
              MPI_Bcast(b, ncols, MPI_DOUBLE, 0, MPI_COMM_WORLD);
               if (myid <= nrows) {
@@ -301,7 +308,7 @@ for(i=0;i<numprocs-1;i++){
   }
 }//end of if arg greater that 2
 
-//If not enought arguments print out correct formating
+//If not enought arguments print out correct formatting
 else{
 	if(myid==0){
 	fprintf(stderr, "Usage mpiexec -f ~/hosts -n 2 ./mmult_mpi_omp <name1.txt> <name2.txt>\n");
