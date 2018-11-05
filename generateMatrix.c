@@ -22,6 +22,8 @@ int main(int argc, char* argv[]){
             fprintf(fp,"\n");
         }
         fclose(fp);
+    }else{
+        printf("Missing arguments <rows> <cols> <filename>\n");
     }
     
     return 0;
